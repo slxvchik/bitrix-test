@@ -7,6 +7,7 @@ class SimpleCompCatalog extends CBitrixComponent
     {
         $arParams['PRODUCTS_IBLOCK_ID'] = (int)$arParams['PRODUCTS_IBLOCK_ID'];
         $arParams['NEWS_IBLOCK_ID'] = (int)$arParams['NEWS_IBLOCK_ID'];
+        $arParams['OFFERS_IBLOCK_ID'] = (int)($arParams['OFFERS_IBLOCK_ID'] ?? 3);
         $arParams['UF_PROPERTY_CODE'] = trim($arParams['UF_PROPERTY_CODE']);
         $arParams['CACHE_TIME'] = (int)$arParams['CACHE_TIME'];
 
@@ -21,7 +22,6 @@ class SimpleCompCatalog extends CBitrixComponent
             return;
         }
 
-
         if ($this->StartResultCache()) {
             $this->arResult = $this->getData();
 
@@ -31,6 +31,40 @@ class SimpleCompCatalog extends CBitrixComponent
 
             $this->EndResultCache();
         }
+    }
+
+    private function getOffersForProducts($productIds) {
+
+        $rsOffers = CIBlockElement::GetList(
+            array(),
+            array(
+                'IBLOCK_ID' => $this->arParams['OFFERS_IBLOCK_ID'],
+                'PROPERTY_CML2_LINK' => $productIds,
+            ),
+            false,
+            false,
+            array(
+                'ID',
+                'NAME',
+                'CATALOG_PRICE_1',
+                'CATALOG_QUANTITY',
+                'CATALOG_AVAILABLE',
+                'PROPERTY_ARTNUMBER',
+                'PROPERTY_CML2_LINK',
+            )
+        );
+
+        while ($offer = $rsOffers->GetNext()) {
+            $productId = $offer['PROPERTY_CML2_LINK_VALUE'];
+            $offers[$productId][] = array(
+                'ID' => $offer['ID'],
+                'NAME' => $offer['NAME'],
+                'ARTNUMBER' => $offer['PROPERTY_ARTNUMBER_VALUE'],
+                'PRICE' => $offer['CATALOG_PRICE_1']
+            );
+        }
+
+        return $offers;
     }
 
     private function validateParams(): bool
@@ -67,23 +101,23 @@ class SimpleCompCatalog extends CBitrixComponent
         }
         $allSectionIds = array_unique($allSectionIds);
 
-
-        $products = $this->getProducts($allSectionIds);
+        $products = $this->getProductsWithOffers($allSectionIds);
 
         if (empty($products['COUNT'])) return $result;
 
         $result['PRODUCTS_COUNT'] = $products['COUNT'];
 
         foreach ($news as $newsId => $newsItem) {
+
             if (!isset($sectionsMap[$newsId]['CATALOG_IDS'])) continue;
 
-            $item = [
+            $item = array(
                 'ID' => $newsItem['ID'],
                 'NAME' => $newsItem['NAME'],
                 'DATE' => $newsItem['ACTIVE_FROM'],
-                'PRODUCTS' => [],
-                'SECTIONS' => $sectionsMap[$newsId]['CATALOG_NAMES']
-            ];
+                'PRODUCTS' => array(),
+                'SECTION_NAMES' => $sectionsMap[$newsId]['CATALOG_NAMES']
+            );
 
             foreach ($sectionsMap[$newsId]['CATALOG_IDS'] as $sectionId) {
                 if (isset($products['SECTIONS'][$sectionId])) {
@@ -99,9 +133,12 @@ class SimpleCompCatalog extends CBitrixComponent
 
     private function getNews()
     {
-        $news = [];
-        $filter = ['IBLOCK_ID' => $this->arParams['NEWS_IBLOCK_ID'], 'ACTIVE' => 'Y'];
-        $select = ['ID', 'NAME', 'ACTIVE_FROM'];
+        $news = array();
+        $filter = array(
+            'IBLOCK_ID' => $this->arParams['NEWS_IBLOCK_ID'],
+            'ACTIVE' => 'Y'
+        );
+        $select = array('ID', 'NAME', 'ACTIVE_FROM');
 
         $rsNews = CIBlockElement::GetList(array(), $filter, false, false, $select);
 
@@ -112,17 +149,17 @@ class SimpleCompCatalog extends CBitrixComponent
         return $news;
     }
 
-    // Каталоги товара в новостях
+    // Каталоги товара привязанных к новостям
     private function getSectionsMap()
     {
-        $map = [];
-        $filter = [
+        $map = array();
+        $filter = array(
             'IBLOCK_ID' => $this->arParams['PRODUCTS_IBLOCK_ID'],
             'ACTIVE' => 'Y',
             '!'.$this->arParams['UF_PROPERTY_CODE'] => false
-        ];
+        );
 
-        $select = ['ID', 'NAME', $this->arParams['UF_PROPERTY_CODE']];
+        $select = array('ID', 'NAME', $this->arParams['UF_PROPERTY_CODE']);
 
         $rsSections = CIBlockSection::GetList(array(), $filter, false, $select);
         while ($section = $rsSections->GetNext()) {
@@ -139,37 +176,62 @@ class SimpleCompCatalog extends CBitrixComponent
         return $map;
     }
 
-    private function getProducts($sectionIds)
+    private function getProductsWithOffers($sectionIds)
     {
         if (empty($sectionIds)) return [];
 
-        $products = [
-            'SECTIONS' => [],
+        $products = array(
+            'SECTIONS' => array(),
             'COUNT' => 0
-        ];
+        );
 
-        $filter = [
+        $filter = array(
             'IBLOCK_ID' => $this->arParams['PRODUCTS_IBLOCK_ID'],
             'ACTIVE' => 'Y',
             'SECTION_GLOBAL_ACTIVE' => 'Y',
             'SECTION_ID' => $sectionIds
-        ];
+        );
 
-        $select = [
+        $select = array(
             'ID', 'NAME', 'IBLOCK_SECTION_ID',
-            'PROPERTY_MATERIAL', 'PROPERTY_ARTNUMBER', 'PROPERTY_PRICE'
-        ];
+            'PROPERTY_MATERIAL', 'PROPERTY_ARTNUMBER'
+        );
 
-        $rsProducts = CIBlockElement::GetList([], $filter, false, false, $select);
-        while ($product = $rsProducts->Fetch()) {
+        $productIds = array();
+        $productsData = array();
+
+        $rsProducts = CIBlockElement::GetList(array(), $filter, false, false, $select);
+        while ($product = $rsProducts->GetNext()) {
             $sectionId = $product['IBLOCK_SECTION_ID'];
-            $products['SECTIONS'][$sectionId][] = [
-                'NAME' => $product['NAME'],
-                'PRICE' => $product['PROPERTY_PRICE_VALUE'],
-                'ARTICLE' => $product['PROPERTY_ARTNUMBER_VALUE'],
-                'MATERIAL' => $product['PROPERTY_MATERIAL_VALUE']
-            ];
+            $productId = $product['ID'];
+
+            $productIds[] = $productId;
+            $productsData[$productId] = array(
+                'SECTION_ID' => $sectionId,
+                'DATA' => array(
+                    'ID' => $product['ID'],
+                    'NAME' => $product['NAME'],
+                    'ARTNUMBER' => $product['PROPERTY_ARTNUMBER_VALUE'],
+                    'MATERIAL' => $product['PROPERTY_MATERIAL_VALUE'],
+                    'OFFERS' => array()
+                )
+            );
             $products['COUNT']++;
+        }
+
+        if (!empty($productIds)) {
+            $offers = $this->getOffersForProducts($productIds);
+
+            foreach ($offers as $productId => $productOffers) {
+                if (isset($productsData[$productId])) {
+                    $productsData[$productId]['DATA']['OFFERS'] = $productOffers;
+                }
+            }
+        }
+
+        foreach ($productsData as $productId => $productInfo) {
+            $sectionId = $productInfo['SECTION_ID'];
+            $products['SECTIONS'][$sectionId][] = $productInfo['DATA'];
         }
 
         return $products;
