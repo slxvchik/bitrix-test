@@ -27,8 +27,9 @@ class SimpleCompCatalog extends CBitrixComponent
     public function executeComponent(): void
     {
 
-        if (!Loader::includeModule('catalog')) {
-            throw new LoaderException('Модуль catalog не подключен');
+        if (!$this->validateModules()) {
+            ShowError('Модуль iblock или catalog не подключен');
+            return;
         }
 
         if (!$this->validateParams()) {
@@ -51,6 +52,11 @@ class SimpleCompCatalog extends CBitrixComponent
             $this->abortResultCache();
             ShowError("Ошибка при получении данных");
         }
+    }
+
+    private function validateModules(): bool
+    {
+        return CModule::IncludeModule('iblock') && CModule::IncludeModule('catalog');
     }
 
     private function validateParams(): bool

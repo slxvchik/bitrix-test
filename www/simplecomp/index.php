@@ -6,7 +6,7 @@ $APPLICATION->SetTitle("Title");
 	".default", 
 	array(
 		"CACHE_GROUPS" => "Y",
-		"CACHE_TIME" => "360000",
+		"CACHE_TIME" => "7200",
 		"CACHE_TYPE" => "N",
 		"NEWS_IBLOCK_ID" => "1",
 		"PRODUCTS_IBLOCK_ID" => "2",
