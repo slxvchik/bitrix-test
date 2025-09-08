@@ -14,7 +14,7 @@ class SimpleCompCatalog extends CBitrixComponent
         return $arParams;
     }
 
-    public function executeComponent()
+    public function executeComponent(): void
     {
 
         if (!$this->validateParams()) {
@@ -33,7 +33,8 @@ class SimpleCompCatalog extends CBitrixComponent
         }
     }
 
-    private function getOffersForProducts($productIds) {
+    private function getOffersForProducts($productIds): array
+    {
 
         $rsOffers = CIBlockElement::GetList(
             array(),
@@ -53,6 +54,8 @@ class SimpleCompCatalog extends CBitrixComponent
                 'PROPERTY_CML2_LINK',
             )
         );
+
+        $offers = array();
 
         while ($offer = $rsOffers->GetNext()) {
             $productId = $offer['PROPERTY_CML2_LINK_VALUE'];
@@ -83,7 +86,7 @@ class SimpleCompCatalog extends CBitrixComponent
         );
     }
 
-    private function getData()
+    private function getData(): array
     {
         $result = [
             'NEWS' => [],
@@ -132,7 +135,7 @@ class SimpleCompCatalog extends CBitrixComponent
         return $result;
     }
 
-    private function getNews()
+    private function getNews(): array
     {
         $news = array();
         $filter = array(
@@ -151,7 +154,7 @@ class SimpleCompCatalog extends CBitrixComponent
     }
 
     // Каталоги товара привязанных к новостям
-    private function getSectionsMap()
+    private function getSectionsMap(): array
     {
         $map = array();
         $filter = array(
