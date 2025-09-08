@@ -1,6 +1,8 @@
 <?php
 
 use Bitrix\Catalog\PriceTable;
+use Bitrix\Main\Loader;
+use Bitrix\Main\LoaderException;
 
 if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
 
@@ -20,24 +22,34 @@ class SimpleCompCatalog extends CBitrixComponent
      * @throws \Bitrix\Main\ObjectPropertyException
      * @throws \Bitrix\Main\SystemException
      * @throws \Bitrix\Main\ArgumentException
+     * @throws \Bitrix\Main\LoaderException
      */
     public function executeComponent(): void
     {
+
+        if (!Loader::includeModule('catalog')) {
+            throw new LoaderException('Модуль catalog не подключен');
+        }
 
         if (!$this->validateParams()) {
             ShowError('Неверные входные параметры');
             return;
         }
 
+        try {
+            if ($this->StartResultCache()) {
 
-        if ($this->StartResultCache()) {
-            $this->arResult = $this->getData();
+                $this->arResult = $this->getData();
 
-            $this->setPageTitle();
+                $this->setPageTitle();
 
-            $this->includeComponentTemplate();
+                $this->includeComponentTemplate();
 
-            $this->EndResultCache();
+                $this->EndResultCache();
+            }
+        } catch(Exception $e) {
+            $this->abortResultCache();
+            ShowError("Ошибка при получении данных");
         }
     }
 
@@ -64,7 +76,7 @@ class SimpleCompCatalog extends CBitrixComponent
     private function getData(): array
     {
         $result = [
-            'NEWS' => [],
+            'NEWS' => array(),
             'PRODUCTS_COUNT' => 0
         ];
 
@@ -74,7 +86,7 @@ class SimpleCompCatalog extends CBitrixComponent
         $sectionsMap = $this->getSectionsMap();
         if (empty($sectionsMap)) return $result;
 
-        $allSectionIds = [];
+        $allSectionIds = array();
         foreach ($sectionsMap as $sectionIds) {
             $allSectionIds = array_merge($allSectionIds, $sectionIds['CATALOG_IDS']);
         }
@@ -82,7 +94,7 @@ class SimpleCompCatalog extends CBitrixComponent
 
         $products = $this->getProducts($allSectionIds);
 
-        if (empty($products['COUNT'])) return $result;
+        if (empty($products['COUNT']) === 0) return $result;
 
         $result['PRODUCTS_COUNT'] = $products['COUNT'];
 
@@ -93,7 +105,7 @@ class SimpleCompCatalog extends CBitrixComponent
                 'ID' => $newsItem['ID'],
                 'NAME' => $newsItem['NAME'],
                 'DATE' => $newsItem['ACTIVE_FROM'],
-                'PRODUCTS' => [],
+                'PRODUCTS' => array(),
                 'SECTIONS' => $sectionsMap[$newsId]['CATALOG_NAMES']
             ];
 
@@ -111,7 +123,7 @@ class SimpleCompCatalog extends CBitrixComponent
 
     private function getNews(): array
     {
-        $news = [];
+        $news = array();
         $filter = ['IBLOCK_ID' => $this->arParams['NEWS_IBLOCK_ID'], 'ACTIVE' => 'Y'];
         $select = ['ID', 'NAME', 'ACTIVE_FROM'];
 
@@ -127,12 +139,12 @@ class SimpleCompCatalog extends CBitrixComponent
     // Каталоги товара в новостях
     private function getSectionsMap(): array
     {
-        $map = [];
-        $filter = [
+        $map = array();
+        $filter = array(
             'IBLOCK_ID' => $this->arParams['PRODUCTS_IBLOCK_ID'],
             'ACTIVE' => 'Y',
             '!'.$this->arParams['UF_PROPERTY_CODE'] => false
-        ];
+        );
 
         $select = ['ID', 'NAME', $this->arParams['UF_PROPERTY_CODE']];
 
@@ -156,12 +168,12 @@ class SimpleCompCatalog extends CBitrixComponent
      * @throws \Bitrix\Main\SystemException
      * @throws \Bitrix\Main\ArgumentException
      */
-    private function getProducts($sectionIds): array
+    private function getProducts(array $sectionIds): array
     {
-        if (empty($sectionIds)) return [];
+        if (empty($sectionIds)) return array();
 
         $products = [
-            'SECTIONS' => [],
+            'SECTIONS' => array(),
             'COUNT' => 0
         ];
 
@@ -177,10 +189,10 @@ class SimpleCompCatalog extends CBitrixComponent
             'PROPERTY_MATERIAL', 'PROPERTY_ARTNUMBER'
         ];
 
-        $productIds = [];
-        $productsData = [];
+        $productIds = array();
+        $productsData = array();
 
-        $rsProducts = CIBlockElement::GetList([], $filter, false, false, $select);
+        $rsProducts = CIBlockElement::GetList(array(), $filter, false, false, $select);
         while ($product = $rsProducts->Fetch()) {
             $productIds[] = $product['ID'];
             $productsData[$product['ID']] = $product;
@@ -209,8 +221,8 @@ class SimpleCompCatalog extends CBitrixComponent
      */
     private function getBasePricesBatch(array $productIds): array
     {
-        if (empty($productIds) || !CModule::IncludeModule("catalog")) {
-            return [];
+        if (empty($productIds)) {
+            return array();
         }
 
         $priceIterator = PriceTable::getList([
@@ -221,7 +233,7 @@ class SimpleCompCatalog extends CBitrixComponent
             'select' => ['PRODUCT_ID', 'PRICE']
         ]);
 
-        $prices = [];
+        $prices = array();
         while ($price = $priceIterator->fetch()) {
             $prices[$price['PRODUCT_ID']] = $price['PRICE'];
         }
