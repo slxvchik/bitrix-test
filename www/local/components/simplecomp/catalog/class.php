@@ -209,7 +209,7 @@ class SimpleCompCatalog extends CBitrixComponent
      */
     private function getBasePricesBatch(array $productIds): array
     {
-        if (empty($productIds)) {
+        if (empty($productIds) || !CModule::IncludeModule("catalog")) {
             return [];
         }
 
