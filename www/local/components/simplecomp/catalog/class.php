@@ -71,6 +71,7 @@ class SimpleCompCatalog extends CBitrixComponent
     {
         return $this->arParams['PRODUCTS_IBLOCK_ID'] > 0
             && $this->arParams['NEWS_IBLOCK_ID'] > 0
+            && $this->arParams['OFFERS_IBLOCK_ID'] > 0
             && !empty($this->arParams['UF_PROPERTY_CODE']);
     }
 
@@ -121,7 +122,8 @@ class SimpleCompCatalog extends CBitrixComponent
 
             foreach ($sectionsMap[$newsId]['CATALOG_IDS'] as $sectionId) {
                 if (isset($products['SECTIONS'][$sectionId])) {
-                    $item['PRODUCTS'] = array_merge($item['PRODUCTS'], $products['SECTIONS'][$sectionId]);
+//                    $item['PRODUCTS'] = array_merge($item['PRODUCTS'], $products['SECTIONS'][$sectionId]);
+                    array_push($item['PRODUCTS'], ...$products['SECTIONS'][$sectionId]);
                 }
             }
 
