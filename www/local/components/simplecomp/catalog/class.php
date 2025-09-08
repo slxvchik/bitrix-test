@@ -7,7 +7,7 @@ class SimpleCompCatalog extends CBitrixComponent
     {
         $arParams['PRODUCTS_IBLOCK_ID'] = (int)$arParams['PRODUCTS_IBLOCK_ID'];
         $arParams['NEWS_IBLOCK_ID'] = (int)$arParams['NEWS_IBLOCK_ID'];
-        $arParams['OFFERS_IBLOCK_ID'] = (int)($arParams['OFFERS_IBLOCK_ID'] ?? 3);
+        $arParams['OFFERS_IBLOCK_ID'] = (int)$arParams['OFFERS_IBLOCK_ID'];
         $arParams['UF_PROPERTY_CODE'] = trim($arParams['UF_PROPERTY_CODE']);
         $arParams['CACHE_TIME'] = (int)$arParams['CACHE_TIME'];
 
@@ -117,13 +117,12 @@ class SimpleCompCatalog extends CBitrixComponent
                 'NAME' => $newsItem['NAME'],
                 'DATE' => $newsItem['ACTIVE_FROM'],
                 'PRODUCTS' => array(),
-                'SECTION_NAMES' => $sectionsMap[$newsId]['CATALOG_NAMES']
+                'CATALOG_NAMES' => $sectionsMap[$newsId]['CATALOG_NAMES']
             );
 
-            foreach ($sectionsMap[$newsId]['CATALOG_IDS'] as $sectionId) {
-                if (isset($products['SECTIONS'][$sectionId])) {
-//                    $item['PRODUCTS'] = array_merge($item['PRODUCTS'], $products['SECTIONS'][$sectionId]);
-                    array_push($item['PRODUCTS'], ...$products['SECTIONS'][$sectionId]);
+            foreach ($sectionsMap[$newsId]['CATALOG_IDS'] as $catalogId) {
+                if (isset($products['SECTIONS'][$catalogId])) {
+                    array_push($item['PRODUCTS'], ...$products['SECTIONS'][$catalogId]);
                 }
             }
 
@@ -178,7 +177,7 @@ class SimpleCompCatalog extends CBitrixComponent
         return $map;
     }
 
-    private function getProductsWithOffers($sectionIds)
+    private function getProductsWithOffers($sectionIds): array
     {
         if (empty($sectionIds)) return [];
 
