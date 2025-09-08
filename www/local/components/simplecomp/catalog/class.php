@@ -87,7 +87,7 @@ class SimpleCompCatalog extends CBitrixComponent
 
             foreach ($sectionsMap[$newsId]['CATALOG_IDS'] as $sectionId) {
                 if (isset($products['SECTIONS'][$sectionId])) {
-                    $item['PRODUCTS'] = array_merge($item['PRODUCTS'], $products['SECTIONS'][$sectionId]);
+                    array_push($item['PRODUCTS'], ...$products['SECTIONS'][$sectionId]);
                 }
             }
 
