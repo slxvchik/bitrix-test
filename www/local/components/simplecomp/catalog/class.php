@@ -7,14 +7,13 @@ class SimpleCompCatalog extends CBitrixComponent
     {
         $arParams['PRODUCTS_IBLOCK_ID'] = (int)$arParams['PRODUCTS_IBLOCK_ID'];
         $arParams['NEWS_IBLOCK_ID'] = (int)$arParams['NEWS_IBLOCK_ID'];
-        $arParams['OFFERS_IBLOCK_ID'] = (int)($arParams['OFFERS_IBLOCK_ID'] ?? 3);
         $arParams['UF_PROPERTY_CODE'] = trim($arParams['UF_PROPERTY_CODE']);
         $arParams['CACHE_TIME'] = (int)$arParams['CACHE_TIME'];
 
         return $arParams;
     }
 
-    public function executeComponent()
+    public function executeComponent(): void
     {
 
         if (!$this->validateParams()) {
@@ -33,35 +32,34 @@ class SimpleCompCatalog extends CBitrixComponent
         }
     }
 
-    private function getOffersForProducts($productIds) {
-
-        $rsOffers = CIBlockElement::GetList(
-            array(),
+    private function getOffersForProducts($productIds): array
+    {
+        $rsProductsOffers = CCatalogSku::getOffersList(
+            $productIds,
+            0,
             array(
-                'IBLOCK_ID' => $this->arParams['OFFERS_IBLOCK_ID'],
-                'PROPERTY_CML2_LINK' => $productIds,
+                'ACTIVE' => 'Y',
+                '!CATALOG_PRICE_1' => false
             ),
-            false,
-            false,
             array(
                 'ID',
                 'NAME',
                 'CATALOG_PRICE_1',
-                'CATALOG_QUANTITY',
-                'CATALOG_AVAILABLE',
                 'PROPERTY_ARTNUMBER',
-                'PROPERTY_CML2_LINK',
             )
         );
 
-        while ($offer = $rsOffers->GetNext()) {
-            $productId = $offer['PROPERTY_CML2_LINK_VALUE'];
-            $offers[$productId][] = array(
-                'ID' => $offer['ID'],
-                'NAME' => $offer['NAME'],
-                'ARTNUMBER' => $offer['PROPERTY_ARTNUMBER_VALUE'],
-                'PRICE' => $offer['CATALOG_PRICE_1']
-            );
+        $offers = array();
+
+        foreach ($rsProductsOffers as $productId => $rsOffers) {
+            foreach ($rsOffers as $offer) {
+                $offers[$productId][] = array(
+                    'ID' => $offer['ID'],
+                    'NAME' => $offer['NAME'],
+                    'ARTNUMBER' => $offer['PROPERTY_ARTNUMBER_VALUE'],
+                    'PRICE' => $offer['CATALOG_PRICE_1']
+                );
+            }
         }
 
         return $offers;
@@ -71,7 +69,6 @@ class SimpleCompCatalog extends CBitrixComponent
     {
         return $this->arParams['PRODUCTS_IBLOCK_ID'] > 0
             && $this->arParams['NEWS_IBLOCK_ID'] > 0
-            && $this->arParams['OFFERS_IBLOCK_ID'] > 0
             && !empty($this->arParams['UF_PROPERTY_CODE']);
     }
 
@@ -83,7 +80,7 @@ class SimpleCompCatalog extends CBitrixComponent
         );
     }
 
-    private function getData()
+    private function getData(): array
     {
         $result = [
             'NEWS' => [],
@@ -117,13 +114,12 @@ class SimpleCompCatalog extends CBitrixComponent
                 'NAME' => $newsItem['NAME'],
                 'DATE' => $newsItem['ACTIVE_FROM'],
                 'PRODUCTS' => array(),
-                'SECTION_NAMES' => $sectionsMap[$newsId]['CATALOG_NAMES']
+                'CATALOG_NAMES' => $sectionsMap[$newsId]['CATALOG_NAMES']
             );
 
-            foreach ($sectionsMap[$newsId]['CATALOG_IDS'] as $sectionId) {
-                if (isset($products['SECTIONS'][$sectionId])) {
-//                    $item['PRODUCTS'] = array_merge($item['PRODUCTS'], $products['SECTIONS'][$sectionId]);
-                    array_push($item['PRODUCTS'], ...$products['SECTIONS'][$sectionId]);
+            foreach ($sectionsMap[$newsId]['CATALOG_IDS'] as $catalogId) {
+                if (isset($products['SECTIONS'][$catalogId])) {
+                    array_push($item['PRODUCTS'], ...$products['SECTIONS'][$catalogId]);
                 }
             }
 
@@ -133,7 +129,7 @@ class SimpleCompCatalog extends CBitrixComponent
         return $result;
     }
 
-    private function getNews()
+    private function getNews(): array
     {
         $news = array();
         $filter = array(
@@ -152,7 +148,7 @@ class SimpleCompCatalog extends CBitrixComponent
     }
 
     // Каталоги товара привязанных к новостям
-    private function getSectionsMap()
+    private function getSectionsMap(): array
     {
         $map = array();
         $filter = array(
@@ -178,7 +174,7 @@ class SimpleCompCatalog extends CBitrixComponent
         return $map;
     }
 
-    private function getProductsWithOffers($sectionIds)
+    private function getProductsWithOffers($sectionIds): array
     {
         if (empty($sectionIds)) return [];
 

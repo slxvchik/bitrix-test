@@ -13,11 +13,6 @@ $arComponentParameters = [
             'TYPE' => 'STRING',
             'DEFAULT' => '',
         ),
-        'OFFERS_IBLOCK_ID' => array(
-            'NAME' => GetMessage('SIMPLE_COMP_CATALOG_IBLOCK_OFFERS_ID'),
-            'TYPE' => 'STRING',
-            'DEFAULT' => '',
-        ),
         'UF_PROPERTY_CODE' => array(
             'NAME' => GetMessage('SIMPLE_COMP_CATALOG_UF_PROPERTY_CODE'),
             'TYPE' => 'STRING',

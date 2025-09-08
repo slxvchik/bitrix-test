@@ -8,7 +8,7 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
     <?php return; endif; ?>
     <ul>
         <?php foreach ($arResult['NEWS'] as $news): ?>
-            <li><strong><?= $news['NAME']; ?></strong> - <?= $news['DATE']; ?> (<?= implode(", ", $news['SECTION_NAMES']); ?>)</li>
+            <li><strong><?= $news['NAME']; ?></strong> - <?= $news['DATE']; ?> (<?= implode(", ", $news['CATALOG_NAMES']); ?>)</li>
             <ul>
             <?php foreach ($news['PRODUCTS'] as $product): ?>
 
