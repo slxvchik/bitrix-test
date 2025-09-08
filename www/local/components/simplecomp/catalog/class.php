@@ -1,4 +1,7 @@
 <?php
+
+use Bitrix\Catalog\PriceTable;
+
 if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
 
 class SimpleCompCatalog extends CBitrixComponent
@@ -13,7 +16,12 @@ class SimpleCompCatalog extends CBitrixComponent
         return $arParams;
     }
 
-    public function executeComponent()
+    /**
+     * @throws \Bitrix\Main\ObjectPropertyException
+     * @throws \Bitrix\Main\SystemException
+     * @throws \Bitrix\Main\ArgumentException
+     */
+    public function executeComponent(): void
     {
 
         if (!$this->validateParams()) {
@@ -48,7 +56,12 @@ class SimpleCompCatalog extends CBitrixComponent
         );
     }
 
-    private function getData()
+    /**
+     * @throws \Bitrix\Main\ObjectPropertyException
+     * @throws \Bitrix\Main\SystemException
+     * @throws \Bitrix\Main\ArgumentException
+     */
+    private function getData(): array
     {
         $result = [
             'NEWS' => [],
@@ -66,7 +79,6 @@ class SimpleCompCatalog extends CBitrixComponent
             $allSectionIds = array_merge($allSectionIds, $sectionIds['CATALOG_IDS']);
         }
         $allSectionIds = array_unique($allSectionIds);
-
 
         $products = $this->getProducts($allSectionIds);
 
@@ -97,7 +109,7 @@ class SimpleCompCatalog extends CBitrixComponent
         return $result;
     }
 
-    private function getNews()
+    private function getNews(): array
     {
         $news = [];
         $filter = ['IBLOCK_ID' => $this->arParams['NEWS_IBLOCK_ID'], 'ACTIVE' => 'Y'];
@@ -113,7 +125,7 @@ class SimpleCompCatalog extends CBitrixComponent
     }
 
     // Каталоги товара в новостях
-    private function getSectionsMap()
+    private function getSectionsMap(): array
     {
         $map = [];
         $filter = [
@@ -139,7 +151,12 @@ class SimpleCompCatalog extends CBitrixComponent
         return $map;
     }
 
-    private function getProducts($sectionIds)
+    /**
+     * @throws \Bitrix\Main\ObjectPropertyException
+     * @throws \Bitrix\Main\SystemException
+     * @throws \Bitrix\Main\ArgumentException
+     */
+    private function getProducts($sectionIds): array
     {
         if (empty($sectionIds)) return [];
 
@@ -152,20 +169,30 @@ class SimpleCompCatalog extends CBitrixComponent
             'IBLOCK_ID' => $this->arParams['PRODUCTS_IBLOCK_ID'],
             'ACTIVE' => 'Y',
             'SECTION_GLOBAL_ACTIVE' => 'Y',
-            'SECTION_ID' => $sectionIds
+            'SECTION_ID' => $sectionIds,
         ];
 
         $select = [
             'ID', 'NAME', 'IBLOCK_SECTION_ID',
-            'PROPERTY_MATERIAL', 'PROPERTY_ARTNUMBER', 'PROPERTY_PRICE'
+            'PROPERTY_MATERIAL', 'PROPERTY_ARTNUMBER'
         ];
+
+        $productIds = [];
+        $productsData = [];
 
         $rsProducts = CIBlockElement::GetList([], $filter, false, false, $select);
         while ($product = $rsProducts->Fetch()) {
+            $productIds[] = $product['ID'];
+            $productsData[$product['ID']] = $product;
+        }
+
+        $prices = $this->getBasePricesBatch($productIds);
+
+        foreach ($productsData as $productId => $product) {
             $sectionId = $product['IBLOCK_SECTION_ID'];
             $products['SECTIONS'][$sectionId][] = [
                 'NAME' => $product['NAME'],
-                'PRICE' => $product['PROPERTY_PRICE_VALUE'],
+                'PRICE' => $prices[$productId],
                 'ARTICLE' => $product['PROPERTY_ARTNUMBER_VALUE'],
                 'MATERIAL' => $product['PROPERTY_MATERIAL_VALUE']
             ];
@@ -173,5 +200,32 @@ class SimpleCompCatalog extends CBitrixComponent
         }
 
         return $products;
+    }
+
+    /**
+     * @throws \Bitrix\Main\ObjectPropertyException
+     * @throws \Bitrix\Main\SystemException
+     * @throws \Bitrix\Main\ArgumentException
+     */
+    private function getBasePricesBatch(array $productIds): array
+    {
+        if (empty($productIds)) {
+            return [];
+        }
+
+        $priceIterator = PriceTable::getList([
+            'filter' => [
+                'PRODUCT_ID' => $productIds,
+                'CATALOG_GROUP_ID' => 1
+            ],
+            'select' => ['PRODUCT_ID', 'PRICE']
+        ]);
+
+        $prices = [];
+        while ($price = $priceIterator->fetch()) {
+            $prices[$price['PRODUCT_ID']] = $price['PRICE'];
+        }
+
+        return $prices;
     }
 }
